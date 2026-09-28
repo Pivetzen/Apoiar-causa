@@ -12,7 +12,7 @@ const FORM_PONTOS = {
   entryRodada: "entry.456812872"
 };
 
-// ID da Planilha de Respostas para leitura do Ranking/Pontos
+// ID da Planilha de Respostas para leitura
 const SPREADSHEET_ID = "1pVrfO1IMzsEycgofFQvSac4wRPSsUPPyUYdppyW_tuA";
 
 // CONFIGURAÇÃO DO PIX DE DOAÇÃO/APOIO
@@ -59,27 +59,81 @@ function checkSession() {
   }
 }
 
-// Leitura de Dados da Planilha (GViz Query)
+// LOGIN COM VALIDAÇÃO REAL NA PLANILHA
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  
+  const userEntered = document.getElementById("loginUser").value.trim();
+  const passEntered = document.getElementById("loginPass").value.trim();
+  const submitBtn = e.target.querySelector("button[type='submit']");
+
+  if (!userEntered || !passEntered) {
+    alert("Por favor, preencha o utilizador e a palavra-passe.");
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.innerText = "A verificar...";
+
+  try {
+    // Consulta a aba 'Respostas ao formulário 1' (Cadastros)
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=Respostas%20ao%20formul%C3%A1rio%201&tqx=out:json`;
+    const res = await fetch(sheetUrl);
+    const text = await res.text();
+    const jsonString = text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
+    const data = JSON.parse(jsonString);
+
+    const rows = data.table.rows || [];
+    let authenticated = false;
+
+    // Coluna 1 = Usuario (B), Coluna 2 = Senha (C)
+    for (let row of rows) {
+      const dbUser = row.c && row.c[1] ? String(row.c[1].v).trim() : "";
+      const dbPass = row.c && row.c[2] ? String(row.c[2].v).trim() : "";
+
+      if (dbUser.toLowerCase() === userEntered.toLowerCase() && dbPass === passEntered) {
+        authenticated = true;
+        break;
+      }
+    }
+
+    if (authenticated) {
+      localStorage.setItem("gameUser", userEntered);
+      currentUser = userEntered;
+      checkSession();
+    } else {
+      alert("Utilizador ou palavra-passe incorretos! Verifique os dados ou registe uma nova conta.");
+    }
+
+  } catch (err) {
+    console.error("Erro na autenticação:", err);
+    alert("Erro ao conectar à base de dados. Tente novamente em instantes.");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerText = "Entrar";
+  }
+});
+
+// Leitura de Dados da Planilha (Pontos e Ranking)
 async function carregarPontuacaoELeaderboard() {
   const rankingList = document.getElementById("rankingList");
   rankingList.innerHTML = `<p class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Atualizando pontuações...</p>`;
 
-  const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
+  // Consulta a aba 'Respostas ao formulário 2' (Pontos/Cliques)
+  const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=Respostas%20ao%20formul%C3%A1rio%202&tqx=out:json`;
 
   try {
     const res = await fetch(gvizUrl);
     const text = await res.text();
-    // Limpa a resposta do GViz para transformar em JSON puro
     const jsonString = text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
     const data = JSON.parse(jsonString);
 
-    const rows = data.table.rows;
+    const rows = data.table.rows || [];
     let totalCliquesGlobal = 0;
     const contagemPorUsuario = {};
 
     rows.forEach(row => {
-      // Procura a coluna do utilizador (normalmente índice 1 na resposta do Google Forms)
-      const userCell = row.c[1] ? row.c[1].v : null;
+      const userCell = row.c && row.c[1] ? row.c[1].v : null;
       if (userCell) {
         const username = String(userCell).trim();
         totalCliquesGlobal++;
@@ -87,18 +141,15 @@ async function carregarPontuacaoELeaderboard() {
       }
     });
 
-    // Atualiza Total Global e Progresso
     pointsCount = totalCliquesGlobal;
     updateProgressUI();
 
-    // Ordenar Ranking
     const rankingArray = Object.keys(contagemPorUsuario).map(user => {
       return { user: user, pontos: contagemPorUsuario[user] };
     });
 
     rankingArray.sort((a, b) => b.pontos - a.pontos);
 
-    // Renderizar Ranking na Interface
     if (rankingArray.length === 0) {
       rankingList.innerHTML = `<p class="empty-text">Nenhum clique registado até ao momento.</p>`;
     } else {
@@ -129,9 +180,9 @@ async function carregarPontuacaoELeaderboard() {
 // Cadastro via Google Forms de fundo
 document.getElementById("registerForm").addEventListener("submit", (e) => {
   e.preventDefault();
-  const user = document.getElementById("regUser").value;
-  const pass = document.getElementById("regPass").value;
-  const pix = document.getElementById("regPix").value;
+  const user = document.getElementById("regUser").value.trim();
+  const pass = document.getElementById("regPass").value.trim();
+  const pix = document.getElementById("regPix").value.trim();
 
   const form = document.createElement("form");
   form.action = FORM_CADASTRO.url;
@@ -150,15 +201,6 @@ document.getElementById("registerForm").addEventListener("submit", (e) => {
   currentUser = user;
   checkSession();
   alert("Perfil criado com sucesso!");
-});
-
-// Login Simples (Sessão Local)
-document.getElementById("loginForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const user = document.getElementById("loginUser").value;
-  localStorage.setItem("gameUser", user);
-  currentUser = user;
-  checkSession();
 });
 
 // Recompensa / Simulação do Ad
@@ -208,13 +250,11 @@ function confirmarPontuacao() {
   form.submit();
   document.body.removeChild(form);
 
-  // Regista o tempo do clique
   localStorage.setItem("lastClickTime", Date.now());
   
   updateCooldown();
   alert("Ponto enviado com sucesso!");
 
-  // Aguarda 2.5s para dar tempo ao Google Forms de registar a linha e atualiza a pontuação/ranking
   setTimeout(carregarPontuacaoELeaderboard, 2500);
 }
 
