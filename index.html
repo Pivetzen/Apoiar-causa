@@ -46,17 +46,30 @@
     <!-- Dashboard do Jogo -->
     <section id="gameSection" class="card hidden">
       <div class="round-status">
-        <h2>Rodada Atual: <span id="roundNumber">-</span></h2>
+        <h2>Rodada Atual: <span id="roundNumber">1</span></h2>
         <p>Progresso da Meta Coletiva</p>
         <div class="progress-bar">
           <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
         </div>
-        <p><span id="currentPoints">0</span> / <span id="targetPoints">0</span> cliques</p>
+        <p><span id="currentPoints">0</span> / <span id="targetPoints">1000</span> cliques</p>
       </div>
 
       <div class="action-area">
         <button id="clickBtn" onclick="iniciarRecompensa()">Pontuar (+1 Clique)</button>
         <p id="cooldownText" class="cooldown-msg"></p>
+      </div>
+    </section>
+
+    <!-- Secção do Ranking -->
+    <section id="rankingSection" class="card hidden">
+      <div class="ranking-header">
+        <h2><i class="fa-solid fa-trophy" style="color: #eab308;"></i> Ranking dos Jogadores</h2>
+        <button onclick="carregarPontuacaoELeaderboard()" class="btn-refresh" title="Atualizar Ranking">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+      </div>
+      <div id="rankingList" class="ranking-list">
+        <p class="loading-text">A carregar classificação...</p>
       </div>
     </section>
 
