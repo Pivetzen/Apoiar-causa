@@ -15,6 +15,11 @@ const FORM_PONTOS = {
 // ID da Planilha para leitura dos pontos acumulados
 const SPREADSHEET_ID = "1pVrfO1IMzsEycgofFQvSac4wRPSsUPPyUYdppyW_tuA";
 
+// CONFIGURAÇÃO DO PIX DE DOAÇÃO/APOIO
+const CHAVE_PIX_RECEPTOR = "matheuzzu@hotmail.com";
+const NOME_RECEPTOR = "MATHEUS ARRUDA MAIA";
+const CIDADE_RECEPTOR = "FORTALEZA";
+
 let currentUser = localStorage.getItem("gameUser") || null;
 let currentRound = 1; // Pode ser dinâmico no futuro
 let targetMeta = 1000;
@@ -186,9 +191,84 @@ function createHiddenInput(name, value) {
   return input;
 }
 
-function copiarPix() {
-  const pixInput = document.getElementById("pixKey");
-  pixInput.select();
-  navigator.clipboard.writeText(pixInput.value);
-  alert("Chave PIX copiada!");
+// --- LÓGICA DO PIX DE DOAÇÃO / APOIO ---
+function mascaraMoeda(input) {
+  let value = input.value.replace(/\D/g, "");
+  if (!value || value === "00") {
+    input.value = "R$ 0,00";
+    return;
+  }
+  let numberValue = (parseInt(value, 10) / 100).toFixed(2);
+  let formatted = numberValue.replace(".", ",").replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+  input.value = "R$ " + formatted;
+}
+
+function gerarPayloadPix(chave, nome, cidade, valor, txid = "***") {
+  function formatField(id, value) {
+    const len = value.length.toString().padStart(2, '0');
+    return `${id}${len}${value}`;
+  }
+
+  const gui = formatField('00', 'br.gov.bcb.pix');
+  const key = formatField('01', chave);
+  const merchantAccount = formatField('26', `${gui}${key}`);
+  
+  const categoryCode = formatField('52', '0000');
+  const currency = formatField('53', '986');
+  const amountStr = parseFloat(valor).toFixed(2);
+  const amount = formatField('54', amountStr);
+  const country = formatField('58', 'BR');
+  const name = formatField('59', nome.substring(0, 25));
+  const city = formatField('60', cidade.substring(0, 15));
+  const additionalData = formatField('62', formatField('05', txid));
+
+  let payload = `000201${merchantAccount}${categoryCode}${currency}${amount}${country}${name}${city}${additionalData}6304`;
+  
+  function crc16(str) {
+    let crc = 0xFFFF;
+    for (let i = 0; i < str.length; i++) {
+      crc ^= str.charCodeAt(i) << 8;
+      for (let j = 0; j < 8; j++) {
+        if ((crc & 0x8000) !== 0) {
+          crc = (crc << 1) ^ 0x1021;
+        } else {
+          crc = crc << 1;
+        }
+      }
+    }
+    return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+  }
+
+  return payload + crc16(payload);
+}
+
+function gerarECopiarPixDoacao() {
+  const inputElement = document.getElementById('inputValorDoacao');
+  let rawDigits = inputElement.value.replace(/\D/g, "");
+  
+  if (!rawDigits) {
+    alert('Por favor, informe um valor válido.');
+    return;
+  }
+
+  const valor = parseFloat(rawDigits) / 100;
+
+  if (isNaN(valor) || valor <= 0) {
+    alert('Por favor, informe um valor válido.');
+    return;
+  }
+
+  const pixPayload = gerarPayloadPix(CHAVE_PIX_RECEPTOR, NOME_RECEPTOR, CIDADE_RECEPTOR, valor);
+
+  navigator.clipboard.writeText(pixPayload).then(() => {
+    const msg = document.getElementById('msgSucessoPix');
+    if (msg) {
+      msg.style.display = 'block';
+      setTimeout(() => {
+        msg.style.display = 'none';
+      }, 5000);
+    }
+  }).catch(err => {
+    alert('Não foi possível copiar automaticamente. Tente novamente.');
+  });
 }
