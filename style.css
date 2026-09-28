@@ -132,23 +132,6 @@ button {
   color: #fbbf24;
 }
 
-/* PIX Footer */
-.pix-footer {
-  text-align: center;
-  font-size: 0.9rem;
-}
-
-.pix-box {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.pix-box input {
-  flex: 1;
-  font-size: 0.8rem;
-}
-
 /* Modal */
 .modal {
   position: fixed;
@@ -176,4 +159,89 @@ button {
   font-weight: bold;
   margin: 20px 0;
   color: #38bdf8;
+}
+
+/* --- ESTILO PIX DOAÇÃO / APOIO --- */
+.donation-footer {
+  width: 100%;
+  text-align: center;
+  font-size: 0.75rem;
+}
+
+.donation-card {
+  width: 100%;
+  padding: 12px;
+  background: #1e293b;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  border: 1px solid #334155;
+}
+
+.donation-title {
+  font-weight: 600;
+  color: #f8fafc;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.donation-subtitle {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+.donation-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.donation-input {
+  width: 100%;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #f8fafc;
+  background-color: #0f172a;
+  text-align: center;
+  outline: none;
+}
+
+.donation-input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.btn-pix {
+  background-color: #059669;
+  color: white;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn-pix:hover {
+  background-color: #047857;
+}
+
+.pix-success-msg {
+  font-size: 0.75rem;
+  color: #22c55e;
+  font-weight: 600;
+  margin-top: 8px;
+  display: none;
 }
