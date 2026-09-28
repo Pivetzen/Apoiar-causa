@@ -12,7 +12,7 @@ const FORM_PONTOS = {
   entryRodada: "entry.456812872"
 };
 
-// ID da Planilha para leitura dos pontos acumulados
+// ID da Planilha de Respostas para leitura do Ranking/Pontos
 const SPREADSHEET_ID = "1pVrfO1IMzsEycgofFQvSac4wRPSsUPPyUYdppyW_tuA";
 
 // CONFIGURAÇÃO DO PIX DE DOAÇÃO/APOIO
@@ -21,7 +21,7 @@ const NOME_RECEPTOR = "MATHEUS ARRUDA MAIA";
 const CIDADE_RECEPTOR = "FORTALEZA";
 
 let currentUser = localStorage.getItem("gameUser") || null;
-let currentRound = 1; // Pode ser dinâmico no futuro
+let currentRound = 1;
 let targetMeta = 1000;
 let pointsCount = 0;
 let adTimerInterval;
@@ -51,7 +51,78 @@ function checkSession() {
   if (currentUser) {
     document.getElementById("authSection").classList.add("hidden");
     document.getElementById("gameSection").classList.remove("hidden");
+    document.getElementById("rankingSection").classList.remove("hidden");
     document.getElementById("userInfo").innerText = `Olá, ${currentUser}`;
+    
+    // Procura pontos reais e ranking na planilha
+    carregarPontuacaoELeaderboard();
+  }
+}
+
+// Leitura de Dados da Planilha (GViz Query)
+async function carregarPontuacaoELeaderboard() {
+  const rankingList = document.getElementById("rankingList");
+  rankingList.innerHTML = `<p class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Atualizando pontuações...</p>`;
+
+  const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
+
+  try {
+    const res = await fetch(gvizUrl);
+    const text = await res.text();
+    // Limpa a resposta do GViz para transformar em JSON puro
+    const jsonString = text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
+    const data = JSON.parse(jsonString);
+
+    const rows = data.table.rows;
+    let totalCliquesGlobal = 0;
+    const contagemPorUsuario = {};
+
+    rows.forEach(row => {
+      // Procura a coluna do utilizador (normalmente índice 1 na resposta do Google Forms)
+      const userCell = row.c[1] ? row.c[1].v : null;
+      if (userCell) {
+        const username = String(userCell).trim();
+        totalCliquesGlobal++;
+        contagemPorUsuario[username] = (contagemPorUsuario[username] || 0) + 1;
+      }
+    });
+
+    // Atualiza Total Global e Progresso
+    pointsCount = totalCliquesGlobal;
+    updateProgressUI();
+
+    // Ordenar Ranking
+    const rankingArray = Object.keys(contagemPorUsuario).map(user => {
+      return { user: user, pontos: contagemPorUsuario[user] };
+    });
+
+    rankingArray.sort((a, b) => b.pontos - a.pontos);
+
+    // Renderizar Ranking na Interface
+    if (rankingArray.length === 0) {
+      rankingList.innerHTML = `<p class="empty-text">Nenhum clique registado até ao momento.</p>`;
+    } else {
+      rankingList.innerHTML = rankingArray.map((item, index) => {
+        let badge = `#${index + 1}`;
+        if (index === 0) badge = '🥇';
+        else if (index === 1) badge = '🥈';
+        else if (index === 2) badge = '🥉';
+
+        const isMe = item.user.toLowerCase() === (currentUser || "").toLowerCase();
+
+        return `
+          <div class="ranking-item ${isMe ? 'my-rank' : ''}">
+            <span class="rank-pos">${badge}</span>
+            <span class="rank-user">${item.user} ${isMe ? '(Você)' : ''}</span>
+            <span class="rank-points">${item.pontos} ${item.pontos === 1 ? 'clique' : 'cliques'}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+  } catch (error) {
+    console.error("Erro ao carregar dados:", error);
+    rankingList.innerHTML = `<p class="empty-text">Não foi possível carregar o ranking no momento.</p>`;
   }
 }
 
@@ -140,11 +211,11 @@ function confirmarPontuacao() {
   // Regista o tempo do clique
   localStorage.setItem("lastClickTime", Date.now());
   
-  // Atualização visual local
-  pointsCount++;
-  updateProgressUI();
   updateCooldown();
-  alert("Ponto computado!");
+  alert("Ponto enviado com sucesso!");
+
+  // Aguarda 2.5s para dar tempo ao Google Forms de registar a linha e atualiza a pontuação/ranking
+  setTimeout(carregarPontuacaoELeaderboard, 2500);
 }
 
 function updateCooldown() {
