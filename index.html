@@ -5,6 +5,9 @@
   <!-- Bloqueio de Zoom e Escala de Ecrã -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Jogo Cooperativo</title>
+
+  <!-- Ícones FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -57,12 +60,23 @@
       </div>
     </section>
 
-    <!-- Rodapé PIX -->
-    <footer class="card pix-footer">
-      <p>Apoie o projeto via PIX!</p>
-      <div class="pix-box">
-        <input type="text" id="pixKey" value="sua-chave-pix-aqui@email.com" readonly>
-        <button onclick="copiarPix()">Copiar PIX</button>
+    <!-- Rodapé PIX Estilo Doação -->
+    <footer class="donation-footer">
+      <div class="donation-card">
+        <p class="donation-title">
+          <i class="fa-solid fa-heart" style="color: #ef4444;"></i> Gostou do app? Apoie o projeto!
+        </p>
+        <p class="donation-subtitle">Sua doação ajuda a manter a ferramenta online.</p>
+        
+        <div class="donation-controls">
+          <input type="text" id="inputValorDoacao" placeholder="Digite um valor..." oninput="mascaraMoeda(this)" class="donation-input">
+          <button onclick="gerarECopiarPixDoacao()" class="btn-pix">
+            <i class="fa-regular fa-copy"></i> Copiar Pix
+          </button>
+        </div>
+        <p id="msgSucessoPix" class="pix-success-msg">
+          <i class="fa-solid fa-check-circle"></i> Código Copia e Cola gravado! Abra seu banco para pagar.
+        </p>
       </div>
     </footer>
   </div>
