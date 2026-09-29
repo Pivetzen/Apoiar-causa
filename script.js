@@ -90,8 +90,39 @@ function switchTab(tab) {
   }
 }
 
-function checkSession() {
+// Checagem de Sessão com verificação de Banimento
+async function checkSession() {
   if (currentUser) {
+    // Valida na planilha se o usuário logado foi banido recentemente
+    try {
+      const sheetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=Respostas%20ao%20formul%C3%A1rio%201&tqx=out:json`;
+      const res = await fetch(sheetUrl);
+      const text = await res.text();
+      const jsonString = text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
+      const data = JSON.parse(jsonString);
+
+      const rows = data.table.rows || [];
+      let isBanned = false;
+
+      for (let row of rows) {
+        const dbUser = row.c && row.c[1] ? String(row.c[1].v).trim() : "";
+        const dbStatus = row.c && row.c[3] && row.c[3].v !== null ? String(row.c[3].v).trim().toLowerCase() : "";
+
+        if (dbUser.toLowerCase() === currentUser.toLowerCase() && dbStatus === "banido") {
+          isBanned = true;
+          break;
+        }
+      }
+
+      if (isBanned) {
+        alert("A sua conta foi banida e você foi desconectado.");
+        fazerLogout();
+        return;
+      }
+    } catch (err) {
+      console.warn("Não foi possível verificar status de banimento na inicialização:", err);
+    }
+
     document.getElementById("authSection").classList.add("hidden");
     document.getElementById("gameSection").classList.remove("hidden");
     document.getElementById("rankingSection").classList.remove("hidden");
@@ -112,7 +143,7 @@ function checkSession() {
   }
 }
 
-// LOGIN COM VALIDAÇÃO REAL NA PLANILHA
+// LOGIN COM VALIDAÇÃO REAL E CHECAGEM DE BANIMENTO (COLUNA D)
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   
@@ -137,18 +168,27 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
 
     const rows = data.table.rows || [];
     let authenticated = false;
+    let isBanned = false;
 
     for (let row of rows) {
       const dbUser = row.c && row.c[1] ? String(row.c[1].v).trim() : "";
       const dbPass = row.c && row.c[2] ? String(row.c[2].v).trim() : "";
+      // Leitura da Coluna D (Status: Ativo / Banido)
+      const dbStatus = row.c && row.c[3] && row.c[3].v !== null ? String(row.c[3].v).trim().toLowerCase() : "";
 
       if (dbUser.toLowerCase() === userEntered.toLowerCase() && dbPass === passEntered) {
-        authenticated = true;
+        if (dbStatus === "banido") {
+          isBanned = true;
+        } else {
+          authenticated = true;
+        }
         break;
       }
     }
 
-    if (authenticated) {
+    if (isBanned) {
+      alert("A sua conta está banida e não pode acessar o sistema!");
+    } else if (authenticated) {
       localStorage.setItem("gameUser", userEntered);
       currentUser = userEntered;
       checkSession();
