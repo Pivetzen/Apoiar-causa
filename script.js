@@ -267,6 +267,7 @@ async function carregarPontuacaoELeaderboard() {
 
     pointsCount = totalCliquesGlobal;
     updateProgressUI();
+    updateCooldown(); // Reavalia a disponibilidade do botão ao atualizar os pontos
 
     // Guardar ranking geral para o modal de status
     rankingGeralCalculado = Object.keys(contagemPorUsuarioGeral).map(user => ({
@@ -391,6 +392,12 @@ function carregarEstatisticasRodada() {
 
 // Recompensa / Simulação do Ad
 function iniciarRecompensa() {
+  // Impede o clique caso a meta coletiva já tenha sido batida
+  if (pointsCount >= targetMeta) {
+    alert("A meta desta rodada já foi alcançada!");
+    return;
+  }
+
   const lastClick = localStorage.getItem("lastClickTime");
   const now = Date.now();
 
@@ -445,9 +452,21 @@ function confirmarPontuacao() {
 }
 
 function updateCooldown() {
-  const lastClick = localStorage.getItem("lastClickTime");
   const btn = document.getElementById("clickBtn");
   const cooldownText = document.getElementById("cooldownText");
+
+  // SE A META FOI ALCANÇADA: Bloqueia o botão e atualiza o texto
+  if (pointsCount >= targetMeta) {
+    btn.disabled = true;
+    btn.innerText = "Meta Alcançada!";
+    cooldownText.innerText = "A meta coletiva desta rodada já foi batida!";
+    return;
+  }
+
+  // Restaura o texto original do botão caso a meta ainda não tenha sido batida
+  btn.innerText = "Pontuar (+1 Clique)";
+
+  const lastClick = localStorage.getItem("lastClickTime");
 
   if (!lastClick) {
     btn.disabled = false;
