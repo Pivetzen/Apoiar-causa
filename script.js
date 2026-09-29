@@ -27,8 +27,7 @@ let adTimerInterval;
 
 // Armazenamento global dos dados para cálculo de ranking e datas
 let todosOsCliques = [];
-let dataInicioConfig = "";
-let dataFimConfig = "";
+let configuracoesRodadas = {}; // ex: { 1: { inicio: '01/09', fim: '10/09' } }
 let rankingGeralCalculado = [];
 
 // TEMPO DE INATIVIDADE (10 Minutos)
@@ -190,46 +189,38 @@ document.getElementById("registerForm").addEventListener("submit", (e) => {
   alert("Perfil criado com sucesso!");
 });
 
-// CARREGAR CONFIGURAÇÕES DA PLANILHA (ABA Configuracoes)
+// CARREGAR CONFIGURAÇÕES DA PLANILHA (ABA configuracoes)
 async function carregarConfiguracoes() {
   try {
-    const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=Configuracoes&tqx=out:json`;
+    const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=configuracoes&tqx=out:json`;
     const res = await fetch(gvizUrl);
     const text = await res.text();
     const jsonString = text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
     const data = JSON.parse(jsonString);
 
     const rows = data.table.rows || [];
-    
-    if (rows.length > 0 && rows[0].c) {
-      const row = rows[0].c;
+    configuracoesRodadas = {};
 
-      // Coluna A (Índice 0): Meta_Cliques
-      if (row[0] && row[0].v !== null) {
-        targetMeta = parseInt(row[0].v) || 1000;
-      }
+    rows.forEach(row => {
+      if (row.c && row.c[0] && row.c[0].v !== null) {
+        const rodadaNum = parseInt(row.c[0].v);
+        const dataInicio = row.c[1] ? (row.c[1].f || String(row.c[1].v)) : "N/A";
+        const dataFim = row.c[2] ? (row.c[2].f || String(row.c[2].v)) : "N/A";
 
-      // Coluna B (Índice 1): Data_Inicio
-      if (row[1]) {
-        dataInicioConfig = row[1].f || String(row[1].v || "");
+        if (!isNaN(rodadaNum)) {
+          configuracoesRodadas[rodadaNum] = {
+            inicio: dataInicio,
+            fim: dataFim
+          };
+        }
       }
-
-      // Coluna C (Índice 2): Data_Fim
-      if (row[2]) {
-        dataFimConfig = row[2].f || String(row[2].v || "");
-      }
-
-      // Coluna D (Índice 3): Rodada_Ativa
-      if (row[3] && row[3].v !== null) {
-        currentRound = parseInt(row[3].v) || 1;
-      }
-    }
+    });
   } catch (err) {
-    console.warn("Não foi possível carregar a aba Configuracoes:", err);
+    console.warn("Não foi possível carregar a aba configuracoes:", err);
   }
 }
 
-// Leitura de Dados da Planilha (Pontos e Ranking)
+// Leitura de Dados da Planilha (Pontos e Ranking da Rodada Vigente - Top 10)
 async function carregarPontuacaoELeaderboard() {
   const rankingList = document.getElementById("rankingList");
   rankingList.innerHTML = `<p class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Atualizando pontuações...</p>`;
@@ -246,7 +237,8 @@ async function carregarPontuacaoELeaderboard() {
 
     const rows = data.table.rows || [];
     let totalCliquesGlobal = 0;
-    const contagemPorUsuario = {};
+    const contagemPorUsuarioGeral = {};
+    const contagemPorUsuarioRodada = {};
     todosOsCliques = [];
 
     rows.forEach(row => {
@@ -257,28 +249,47 @@ async function carregarPontuacaoELeaderboard() {
         const username = String(userCell).trim();
         const rodadaNum = parseInt(rodadaCell) || 1;
         totalCliquesGlobal++;
-        contagemPorUsuario[username] = (contagemPorUsuario[username] || 0) + 1;
+
+        // Guarda o histórico geral
+        contagemPorUsuarioGeral[username] = (contagemPorUsuarioGeral[username] || 0) + 1;
 
         todosOsCliques.push({
           user: username,
           rodada: rodadaNum
         });
+
+        // Contabiliza apenas os cliques da RODADA VIGENTE
+        if (rodadaNum === currentRound) {
+          contagemPorUsuarioRodada[username] = (contagemPorUsuarioRodada[username] || 0) + 1;
+        }
       }
     });
 
     pointsCount = totalCliquesGlobal;
     updateProgressUI();
 
-    rankingGeralCalculado = Object.keys(contagemPorUsuario).map(user => {
-      return { user: user, pontos: contagemPorUsuario[user] };
-    });
-
+    // Guardar ranking geral para o modal de status
+    rankingGeralCalculado = Object.keys(contagemPorUsuarioGeral).map(user => ({
+      user: user,
+      pontos: contagemPorUsuarioGeral[user]
+    }));
     rankingGeralCalculado.sort((a, b) => b.pontos - a.pontos);
 
-    if (rankingGeralCalculado.length === 0) {
-      rankingList.innerHTML = `<p class="empty-text">Nenhum clique registado até ao momento.</p>`;
+    // Calcular o ranking exclusivo da rodada vigente
+    const rankingRodadaCalculado = Object.keys(contagemPorUsuarioRodada).map(user => ({
+      user: user,
+      pontos: contagemPorUsuarioRodada[user]
+    }));
+
+    rankingRodadaCalculado.sort((a, b) => b.pontos - a.pontos);
+
+    // Pega estritamente os 10 primeiros colocados
+    const top10Rodada = rankingRodadaCalculado.slice(0, 10);
+
+    if (top10Rodada.length === 0) {
+      rankingList.innerHTML = `<p class="empty-text">Nenhum clique registado nesta rodada até ao momento.</p>`;
     } else {
-      rankingList.innerHTML = rankingGeralCalculado.map((item, index) => {
+      rankingList.innerHTML = top10Rodada.map((item, index) => {
         let badge = `#${index + 1}`;
         if (index === 0) badge = '🥇';
         else if (index === 1) badge = '🥈';
@@ -356,7 +367,7 @@ function carregarEstatisticasRodada() {
 
   document.getElementById("userRoundPoints").innerText = meusCliquesNaRodada.length;
 
-  // Calcular ranking da rodada
+  // Calcular ranking específico da rodada
   const contagemRodada = {};
   cliquesDaRodada.forEach(item => {
     contagemRodada[item.user] = (contagemRodada[item.user] || 0) + 1;
@@ -368,9 +379,11 @@ function carregarEstatisticasRodada() {
   const posRodada = rankingRodada.findIndex(item => item.user.toLowerCase() === (currentUser || "").toLowerCase());
   document.getElementById("userRoundRank").innerText = posRodada !== -1 ? `#${posRodada + 1}` : "Sem Posição";
 
-  // Exibe a Data Inicial e Data Final vindas da aba Configuracoes
-  if (dataInicioConfig && dataFimConfig) {
-    document.getElementById("userRoundDate").innerText = `${dataInicioConfig} até ${dataFimConfig}`;
+  // Data Inicial e Data Final da aba configuracoes
+  if (configuracoesRodadas[rodadaSel]) {
+    const inicio = configuracoesRodadas[rodadaSel].inicio;
+    const fim = configuracoesRodadas[rodadaSel].fim;
+    document.getElementById("userRoundDate").innerText = `${inicio} até ${fim}`;
   } else {
     document.getElementById("userRoundDate").innerText = "Datas não configuradas";
   }
