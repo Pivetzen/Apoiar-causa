@@ -25,8 +25,10 @@ let targetMeta = 1000;
 let pointsCount = 0;
 let adTimerInterval;
 
-// Estrutura para estatísticas do utilizador
-let userCliquesHistorico = []; 
+// Armazenamento global dos dados para cálculo de ranking e datas
+let todosOsCliques = [];
+let configuracoesRodadas = {}; // ex: { 1: { inicio: '01/09', fim: '10/09' } }
+let rankingGeralCalculado = [];
 
 // TEMPO DE INATIVIDADE (10 Minutos)
 const TEMPO_INATIVIDADE_MS = 10 * 60 * 1000;
@@ -94,7 +96,6 @@ function checkSession() {
     document.getElementById("gameSection").classList.remove("hidden");
     document.getElementById("rankingSection").classList.remove("hidden");
     
-    // Header com Botão Ver Status e Botão Sair
     document.getElementById("userInfo").innerHTML = `
       <span>Olá, <strong>${currentUser}</strong></span>
       <div class="user-header-actions">
@@ -188,10 +189,43 @@ document.getElementById("registerForm").addEventListener("submit", (e) => {
   alert("Perfil criado com sucesso!");
 });
 
-// Leitura de Dados da Planilha (Pontos, Ranking e Histórico do Usuário)
+// CARREGAR CONFIGURAÇÕES DA PLANILHA (ABA configuracoes)
+async function carregarConfiguracoes() {
+  try {
+    const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=configuracoes&tqx=out:json`;
+    const res = await fetch(gvizUrl);
+    const text = await res.text();
+    const jsonString = text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
+    const data = JSON.parse(jsonString);
+
+    const rows = data.table.rows || [];
+    configuracoesRodadas = {};
+
+    rows.forEach(row => {
+      if (row.c && row.c[0] && row.c[0].v !== null) {
+        const rodadaNum = parseInt(row.c[0].v);
+        const dataInicio = row.c[1] ? (row.c[1].f || String(row.c[1].v)) : "N/A";
+        const dataFim = row.c[2] ? (row.c[2].f || String(row.c[2].v)) : "N/A";
+
+        if (!isNaN(rodadaNum)) {
+          configuracoesRodadas[rodadaNum] = {
+            inicio: dataInicio,
+            fim: dataFim
+          };
+        }
+      }
+    });
+  } catch (err) {
+    console.warn("Não foi possível carregar a aba configuracoes:", err);
+  }
+}
+
+// Leitura de Dados da Planilha (Pontos e Ranking)
 async function carregarPontuacaoELeaderboard() {
   const rankingList = document.getElementById("rankingList");
   rankingList.innerHTML = `<p class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Atualizando pontuações...</p>`;
+
+  await carregarConfiguracoes();
 
   const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=Respostas%20ao%20formul%C3%A1rio%202&tqx=out:json`;
 
@@ -204,40 +238,38 @@ async function carregarPontuacaoELeaderboard() {
     const rows = data.table.rows || [];
     let totalCliquesGlobal = 0;
     const contagemPorUsuario = {};
-    userCliquesHistorico = [];
+    todosOsCliques = [];
 
     rows.forEach(row => {
-      const dataHora = row.c && row.c[0] ? row.c[0].f || row.c[0].v : "";
       const userCell = row.c && row.c[1] ? row.c[1].v : null;
       const rodadaCell = row.c && row.c[2] ? row.c[2].v : 1;
 
       if (userCell) {
         const username = String(userCell).trim();
+        const rodadaNum = parseInt(rodadaCell) || 1;
         totalCliquesGlobal++;
         contagemPorUsuario[username] = (contagemPorUsuario[username] || 0) + 1;
 
-        if (currentUser && username.toLowerCase() === currentUser.toLowerCase()) {
-          userCliquesHistorico.push({
-            dataHora: dataHora,
-            rodada: parseInt(rodadaCell) || 1
-          });
-        }
+        todosOsCliques.push({
+          user: username,
+          rodada: rodadaNum
+        });
       }
     });
 
     pointsCount = totalCliquesGlobal;
     updateProgressUI();
 
-    const rankingArray = Object.keys(contagemPorUsuario).map(user => {
+    rankingGeralCalculado = Object.keys(contagemPorUsuario).map(user => {
       return { user: user, pontos: contagemPorUsuario[user] };
     });
 
-    rankingArray.sort((a, b) => b.pontos - a.pontos);
+    rankingGeralCalculado.sort((a, b) => b.pontos - a.pontos);
 
-    if (rankingArray.length === 0) {
+    if (rankingGeralCalculado.length === 0) {
       rankingList.innerHTML = `<p class="empty-text">Nenhum clique registado até ao momento.</p>`;
     } else {
-      rankingList.innerHTML = rankingArray.map((item, index) => {
+      rankingList.innerHTML = rankingGeralCalculado.map((item, index) => {
         let badge = `#${index + 1}`;
         if (index === 0) badge = '🥇';
         else if (index === 1) badge = '🥈';
@@ -265,20 +297,24 @@ async function carregarPontuacaoELeaderboard() {
 function abrirModalStatus() {
   document.getElementById("statusModal").classList.remove("hidden");
   
-  // Atualiza pontos totais do utilizador
-  document.getElementById("userTotalPoints").innerText = userCliquesHistorico.length;
+  const meusCliquesGeral = todosOsCliques.filter(c => c.user.toLowerCase() === (currentUser || "").toLowerCase());
+  document.getElementById("userTotalPoints").innerText = meusCliquesGeral.length;
 
-  // Atualiza opções do select de rodadas
+  // Posição no Ranking Geral
+  const posGeral = rankingGeralCalculado.findIndex(item => item.user.toLowerCase() === (currentUser || "").toLowerCase());
+  document.getElementById("userGeneralRank").innerText = posGeral !== -1 ? `#${posGeral + 1}` : "Sem Posição";
+
+  // Preencher opções de rodadas
   const select = document.getElementById("selectRodada");
-  const rodadasDisponiveis = [...new Set(userCliquesHistorico.map(item => item.rodada))];
+  let rodadasExistentes = [...new Set(todosOsCliques.map(item => item.rodada))];
   
-  if (!rodadasDisponiveis.includes(currentRound)) {
-    rodadasDisponiveis.push(currentRound);
+  if (!rodadasExistentes.includes(currentRound)) {
+    rodadasExistentes.push(currentRound);
   }
-  
-  rodadasDisponiveis.sort((a, b) => a - b);
 
-  select.innerHTML = rodadasDisponiveis.map(r => `<option value="${r}">Rodada ${r}</option>`).join('');
+  rodadasExistentes.sort((a, b) => a - b);
+
+  select.innerHTML = rodadasExistentes.map(r => `<option value="${r}">Rodada ${r}</option>`).join('');
   select.value = currentRound;
 
   carregarEstatisticasRodada();
@@ -304,15 +340,32 @@ function alternarAbaStatus(aba) {
 
 function carregarEstatisticasRodada() {
   const rodadaSel = parseInt(document.getElementById("selectRodada").value);
-  const pontosNaRodada = userCliquesHistorico.filter(item => item.rodada === rodadaSel);
+  
+  // Cliques da rodada
+  const cliquesDaRodada = todosOsCliques.filter(item => item.rodada === rodadaSel);
+  const meusCliquesNaRodada = cliquesDaRodada.filter(item => item.user.toLowerCase() === (currentUser || "").toLowerCase());
 
-  document.getElementById("userRoundPoints").innerText = pontosNaRodada.length;
+  document.getElementById("userRoundPoints").innerText = meusCliquesNaRodada.length;
 
-  if (pontosNaRodada.length > 0) {
-    const ultimaData = pontosNaRodada[pontosNaRodada.length - 1].dataHora;
-    document.getElementById("userRoundDate").innerText = ultimaData || "Data não registada";
+  // Calcular ranking específico da rodada
+  const contagemRodada = {};
+  cliquesDaRodada.forEach(item => {
+    contagemRodada[item.user] = (contagemRodada[item.user] || 0) + 1;
+  });
+
+  const rankingRodada = Object.keys(contagemRodada).map(u => ({ user: u, pontos: contagemRodada[u] }));
+  rankingRodada.sort((a, b) => b.pontos - a.pontos);
+
+  const posRodada = rankingRodada.findIndex(item => item.user.toLowerCase() === (currentUser || "").toLowerCase());
+  document.getElementById("userRoundRank").innerText = posRodada !== -1 ? `#${posRodada + 1}` : "Sem Posição";
+
+  // Data Inicial e Data Final da aba configuracoes
+  if (configuracoesRodadas[rodadaSel]) {
+    const inicio = configuracoesRodadas[rodadaSel].inicio;
+    const fim = configuracoesRodadas[rodadaSel].fim;
+    document.getElementById("userRoundDate").innerText = `${inicio} até ${fim}`;
   } else {
-    document.getElementById("userRoundDate").innerText = "Sem registos nesta rodada";
+    document.getElementById("userRoundDate").innerText = "Datas não configuradas";
   }
 }
 
