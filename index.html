@@ -103,6 +103,49 @@
     </div>
   </div>
 
+  <!-- Modal de Status e Estatísticas do Utilizador -->
+  <div id="statusModal" class="modal hidden">
+    <div class="modal-content modal-status-content">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-chart-line"></i> Meus Status</h3>
+        <button onclick="fecharModalStatus()" class="btn-close">&times;</button>
+      </div>
+
+      <div class="status-tabs">
+        <button id="tabGeralBtn" class="active" onclick="alternarAbaStatus('geral')">Geral</button>
+        <button id="tabRodadaBtn" onclick="alternarAbaStatus('rodada')">Por Rodada</button>
+      </div>
+
+      <!-- Visão Geral -->
+      <div id="statusGeralView" class="status-view">
+        <div class="stat-box">
+          <span class="stat-label">Total de Cliques:</span>
+          <span id="userTotalPoints" class="stat-value">0</span>
+        </div>
+      </div>
+
+      <!-- Visão por Rodada -->
+      <div id="statusRodadaView" class="status-view hidden">
+        <div class="filter-group">
+          <label for="selectRodada">Selecionar Rodada:</label>
+          <select id="selectRodada" onchange="carregarEstatisticasRodada()">
+            <option value="1">Rodada 1</option>
+          </select>
+        </div>
+
+        <div class="stat-box">
+          <span class="stat-label">Cliques na Rodada:</span>
+          <span id="userRoundPoints" class="stat-value">0</span>
+        </div>
+
+        <div class="stat-box">
+          <span class="stat-label">Data da Rodada:</span>
+          <span id="userRoundDate" class="stat-value-text">N/A</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- iFrames ocultos -->
   <iframe name="hidden_iframe_reg" id="hidden_iframe_reg" style="display:none;"></iframe>
   <iframe name="hidden_iframe_clk" id="hidden_iframe_clk" style="display:none;"></iframe>
@@ -137,7 +180,7 @@
       e.preventDefault();
     });
 
-    // 4. Bloquear Zoom no Desktop (Ctrl + / Ctrl - / Ctrl 0 / Scroll)
+    // 4. Bloquear Zoom no Desktop
     document.addEventListener('keydown', function (e) {
       if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
         e.preventDefault();
