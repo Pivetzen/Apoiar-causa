@@ -1,23 +1,34 @@
+:root {
+  --bg-color: #0f172a;
+  --card-bg: #1e293b;
+  --primary: #0284c7;
+  --primary-hover: #0369a1;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #22c55e;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  touch-action: manipulation; /* Impede gesto de duplo toque para zoom */
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #0f172a;
-  color: #f8fafc;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text);
+  min-height: 100vh;
   display: flex;
-  justify-content: center;
-  padding: 15px;
-  touch-action: manipulation;
-  user-select: none;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 10px 140px 10px; /* Margem inferior para dar espaço ao rodapé fixo */
 }
 
 .app-container {
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
   display: flex;
   flex-direction: column;
   gap: 15px;
@@ -25,24 +36,24 @@ body {
 
 header {
   text-align: center;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
 }
 
 header h1 {
-  font-size: 1.5rem;
-  color: #38bdf8;
+  font-size: 1.8rem;
+  color: var(--primary);
 }
 
 .user-info {
-  font-size: 0.9rem;
-  color: #94a3b8;
-  margin-top: 4px;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-top: 5px;
 }
 
 .card {
-  background-color: #1e293b;
-  border-radius: 12px;
+  background-color: var(--card-bg);
   padding: 20px;
+  border-radius: 12px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
@@ -50,25 +61,25 @@ header h1 {
   display: none !important;
 }
 
-/* Formulários */
 .tabs {
   display: flex;
   gap: 10px;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 .tabs button {
   flex: 1;
   padding: 10px;
-  background-color: #334155;
-  border: none;
-  color: #fff;
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--text);
   border-radius: 6px;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 .tabs button.active {
-  background-color: #0284c7;
+  background-color: var(--primary);
 }
 
 form {
@@ -77,253 +88,244 @@ form {
   gap: 12px;
 }
 
+form h2 {
+  font-size: 1.3rem;
+  margin-bottom: 5px;
+}
+
 input {
   padding: 12px;
-  border-radius: 6px;
-  border: 1px solid #475569;
   background-color: #0f172a;
-  color: #fff;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 1rem;
 }
 
-button {
+input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+button[type="submit"], .action-area button {
   padding: 12px;
+  background-color: var(--primary);
+  color: white;
   border: none;
   border-radius: 6px;
-  background-color: #0284c7;
-  color: white;
+  font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
+  transition: background 0.2s;
 }
 
-/* Game Area */
+button[type="submit"]:hover, .action-area button:hover {
+  background-color: var(--primary-hover);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .round-status {
   text-align: center;
 }
 
 .progress-bar {
+  width: 100%;
+  height: 12px;
   background-color: #334155;
-  height: 20px;
-  border-radius: 10px;
+  border-radius: 6px;
   overflow: hidden;
-  margin: 15px 0;
+  margin: 10px 0;
 }
 
 .progress-fill {
-  background-color: #22c55e;
   height: 100%;
+  background-color: var(--accent);
   transition: width 0.3s ease;
 }
 
 .action-area {
-  margin-top: 20px;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 15px;
 }
 
-#clickBtn {
+.action-area button {
   width: 100%;
-  padding: 15px;
-  font-size: 1.1rem;
-  background-color: #16a34a;
-}
-
-#clickBtn:disabled {
-  background-color: #475569;
-  cursor: not-allowed;
 }
 
 .cooldown-msg {
-  margin-top: 10px;
   font-size: 0.85rem;
-  color: #fbbf24;
+  color: #f59e0b;
+  margin-top: 8px;
 }
 
-/* Ranking Section */
+/* Ranking */
 .ranking-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #334155;
-  padding-bottom: 8px;
-}
-
-.ranking-header h2 {
-  font-size: 1.05rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  margin-bottom: 15px;
 }
 
 .btn-refresh {
-  background: transparent;
-  color: #94a3b8;
-  padding: 4px 8px;
-  font-size: 0.9rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
 }
 
 .btn-refresh:hover {
-  color: #38bdf8;
+  color: var(--text);
 }
 
 .ranking-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 200px;
-  overflow-y: auto;
 }
 
 .ranking-item {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  padding: 10px;
   background-color: #0f172a;
-  padding: 8px 12px;
   border-radius: 6px;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
 }
 
 .ranking-item.my-rank {
-  border: 1px solid #0284c7;
-  background-color: #1e3a8a;
+  border: 1px solid var(--primary);
 }
 
 .rank-pos {
-  width: 24px;
   font-weight: bold;
+  width: 30px;
 }
 
 .rank-user {
   flex: 1;
-  margin: 0 8px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .rank-points {
+  color: var(--accent);
   font-weight: bold;
-  color: #38bdf8;
 }
 
 .loading-text, .empty-text {
   text-align: center;
-  color: #94a3b8;
-  font-size: 0.85rem;
-  padding: 10px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
-/* Modal */
+/* RODAPÉ PIX FIXO NA TELA */
+.donation-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: #0b1120;
+  border-top: 1px solid #1e293b;
+  padding: 12px 15px;
+  display: flex;
+  justify-content: center;
+  z-index: 999;
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.donation-card {
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--card-bg);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  text-align: center;
+}
+
+.donation-title {
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.donation-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.donation-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.donation-input {
+  flex: 1;
+  padding: 8px;
+  font-size: 0.85rem;
+}
+
+.btn-pix {
+  padding: 8px 12px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-pix:hover {
+  background-color: #059669;
+}
+
+.pix-success-msg {
+  display: none;
+  color: #10b981;
+  font-size: 0.75rem;
+  margin-top: 6px;
+}
+
+/* Modal Anúncio */
 .modal {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 100;
+  z-index: 1000;
 }
 
 .modal-content {
-  background: #1e293b;
-  padding: 25px;
+  background-color: var(--card-bg);
+  padding: 30px;
   border-radius: 12px;
   text-align: center;
-  max-width: 300px;
+  max-width: 320px;
+  width: 90%;
 }
 
 .timer-circle {
-  font-size: 2.5rem;
-  font-weight: bold;
-  margin: 20px 0;
-  color: #38bdf8;
-}
-
-/* --- ESTILO PIX DOAÇÃO / APOIO --- */
-.donation-footer {
-  width: 100%;
-  text-align: center;
-  font-size: 0.75rem;
-}
-
-.donation-card {
-  width: 100%;
-  padding: 12px;
-  background: #1e293b;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-  border: 1px solid #334155;
-}
-
-.donation-title {
-  font-weight: 600;
-  color: #f8fafc;
-  margin-bottom: 4px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: var(--primary);
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 0.85rem;
-}
-
-.donation-subtitle {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  margin-bottom: 10px;
-}
-
-.donation-controls {
-  display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.donation-input {
-  width: 100%;
-  border: 1px solid #475569;
-  border-radius: 6px;
-  padding: 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #f8fafc;
-  background-color: #0f172a;
-  text-align: center;
-  outline: none;
-}
-
-.donation-input:focus {
-  border-color: #10b981;
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
-}
-
-.btn-pix {
-  background-color: #059669;
-  color: white;
-  font-weight: 600;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: none;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-.btn-pix:hover {
-  background-color: #047857;
-}
-
-.pix-success-msg {
-  font-size: 0.75rem;
-  color: #22c55e;
-  font-weight: 600;
-  margin-top: 8px;
-  display: none;
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin: 20px auto;
 }
