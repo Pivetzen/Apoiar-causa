@@ -8,6 +8,12 @@
   --accent: #22c55e;
 }
 
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden; /* Impede rolagem horizontal no mobile */
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -21,21 +27,19 @@ body {
   color: var(--text);
   min-height: 100vh;
   margin: 0;
-  padding: 20px 10px 150px 10px; /* Espaço na parte inferior para o rodapé fixo não cobrir o conteúdo */
+  padding: 20px 15px 160px 15px; /* Espaço para o rodapé fixo */
 }
 
 .app-container {
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  display: block; /* Garante empilhamento vertical limpo */
 }
 
 header {
   text-align: center;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 }
 
 header h1 {
@@ -54,6 +58,8 @@ header h1 {
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  margin-bottom: 15px;
+  width: 100%;
 }
 
 .hidden {
@@ -93,6 +99,7 @@ form h2 {
 }
 
 input {
+  width: 100%;
   padding: 12px;
   background-color: #0f172a;
   border: 1px solid #334155;
@@ -222,18 +229,16 @@ button:disabled {
   font-size: 0.9rem;
 }
 
-/* RODAPÉ PIX FIXO NA PARTE INFERIOR */
+/* RODAPÉ PIX FIXO COMPATÍVEL COM SAFARI/MOBILE */
 .donation-footer {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  width: 100vw;
+  width: 100%;
   background-color: #0b1120;
   border-top: 1px solid #1e293b;
-  padding: 12px;
-  display: flex;
-  justify-content: center;
+  padding: 10px 15px;
   z-index: 999;
   box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
 }
@@ -241,21 +246,22 @@ button:disabled {
 .donation-card {
   width: 100%;
   max-width: 480px;
+  margin: 0 auto;
   background-color: var(--card-bg);
-  padding: 12px;
+  padding: 10px;
   border-radius: 8px;
   border: 1px solid #334155;
   text-align: center;
 }
 
 .donation-title {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: bold;
   margin-bottom: 2px;
 }
 
 .donation-subtitle {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
   margin-bottom: 8px;
 }
