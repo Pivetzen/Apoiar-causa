@@ -2,8 +2,7 @@
 const FORM_CADASTRO = {
   url: "https://docs.google.com/forms/u/0/d/15mVgmWlsuTg-LR_15KW5vQNR6bM2rq7ZaNVR2YsNpV0/formResponse",
   entryUser: "entry.1806499634",
-  entryPass: "entry.239497675",
-  entryPix: "entry.1173920273"
+  entryPass: "entry.239497675"
 };
 
 const FORM_PONTOS = {
@@ -114,6 +113,30 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
   }
 });
 
+// Cadastro de Usuário via Google Forms
+document.getElementById("registerForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const user = document.getElementById("regUser").value.trim();
+  const pass = document.getElementById("regPass").value.trim();
+
+  const form = document.createElement("form");
+  form.action = FORM_CADASTRO.url;
+  form.method = "POST";
+  form.target = "hidden_iframe_reg";
+
+  form.appendChild(createHiddenInput(FORM_CADASTRO.entryUser, user));
+  form.appendChild(createHiddenInput(FORM_CADASTRO.entryPass, pass));
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+
+  localStorage.setItem("gameUser", user);
+  currentUser = user;
+  checkSession();
+  alert("Perfil criado com sucesso!");
+});
+
 // Leitura de Dados da Planilha (Pontos e Ranking)
 async function carregarPontuacaoELeaderboard() {
   const rankingList = document.getElementById("rankingList");
@@ -176,32 +199,6 @@ async function carregarPontuacaoELeaderboard() {
     rankingList.innerHTML = `<p class="empty-text">Não foi possível carregar o ranking no momento.</p>`;
   }
 }
-
-// Cadastro via Google Forms de fundo
-document.getElementById("registerForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const user = document.getElementById("regUser").value.trim();
-  const pass = document.getElementById("regPass").value.trim();
-  const pix = document.getElementById("regPix").value.trim();
-
-  const form = document.createElement("form");
-  form.action = FORM_CADASTRO.url;
-  form.method = "POST";
-  form.target = "hidden_iframe_reg";
-
-  form.appendChild(createHiddenInput(FORM_CADASTRO.entryUser, user));
-  form.appendChild(createHiddenInput(FORM_CADASTRO.entryPass, pass));
-  form.appendChild(createHiddenInput(FORM_CADASTRO.entryPix, pix));
-
-  document.body.appendChild(form);
-  form.submit();
-  document.body.removeChild(form);
-
-  localStorage.setItem("gameUser", user);
-  currentUser = user;
-  checkSession();
-  alert("Perfil criado com sucesso!");
-});
 
 // Recompensa / Simulação do Ad
 function iniciarRecompensa() {
