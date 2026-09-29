@@ -20,7 +20,7 @@ const NOME_RECEPTOR = "MATHEUS ARRUDA MAIA";
 const CIDADE_RECEPTOR = "FORTALEZA";
 
 let currentUser = localStorage.getItem("gameUser") || null;
-let currentRound = null; // Começa como null para ser detectado via data
+let currentRound = null; 
 let targetMeta = 21; 
 let pointsCount = 0;
 let adTimerInterval;
@@ -48,7 +48,6 @@ function parseSheetDate(dateStr) {
   
   let str = String(dateStr).trim();
   
-  // Trata formato gviz Date(YYYY,M,D,...)
   if (str.startsWith("Date(")) {
     const parts = str.match(/\d+/g);
     if (parts && parts.length >= 3) {
@@ -56,7 +55,6 @@ function parseSheetDate(dateStr) {
     }
   }
 
-  // Trata formato DD/MM/YYYY
   const partsDDMM = str.split('/');
   if (partsDDMM.length === 3) {
     const day = parseInt(partsDDMM[0], 10);
@@ -169,7 +167,7 @@ async function checkSession() {
   }
 }
 
-// LOGIN COM VALIDAÇÃO REAL E CHECAGEM DE BANIMENTO (COLUNA D)
+// LOGIN COM VALIDAÇÃO REAL E CHECAGEM DE BANIMENTO
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   
@@ -254,7 +252,7 @@ document.getElementById("registerForm").addEventListener("submit", (e) => {
   alert("Perfil criado com sucesso!");
 });
 
-// CARREGAR CONFIGURAÇÕES DA PLANILHA (ABA configuracoes)
+// CARREGAR CONFIGURAÇÕES DA PLANILHA (MAPEAMENTO CORRIGIDO)
 async function carregarConfiguracoes() {
   try {
     const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=configuracoes&tqx=out:json`;
@@ -267,16 +265,20 @@ async function carregarConfiguracoes() {
     configuracoesRodadas = {};
 
     rows.forEach(row => {
-      if (row.c && row.c[0] && row.c[0].v !== null) {
-        const rodadaNum = parseInt(row.c[0].v);
-        const dataInicioTexto = row.c[1] ? (row.c[1].f || String(row.c[1].v)) : "N/A";
-        const dataFimTexto = row.c[2] ? (row.c[2].f || String(row.c[2].v)) : "N/A";
+      // Coluna D (row.c[3]) -> Rodada_Ativa (Número da Rodada)
+      if (row.c && row.c[3] && row.c[3].v !== null) {
+        const rodadaNum = parseInt(row.c[3].v);
         
+        // Coluna A (row.c[0]) -> Meta_Cliques
         let metaCliques = null;
-        if (row.c && row.c[3] && row.c[3].v !== null) {
-          const valLimpo = String(row.c[3].v).replace(/\D/g, "");
+        if (row.c && row.c[0] && row.c[0].v !== null) {
+          const valLimpo = String(row.c[0].v).replace(/\D/g, "");
           metaCliques = parseInt(valLimpo, 10);
         }
+
+        // Coluna B (row.c[1]) -> Data_Inicio | Coluna C (row.c[2]) -> Data_Fim
+        const dataInicioTexto = row.c[1] ? (row.c[1].f || String(row.c[1].v)) : "N/A";
+        const dataFimTexto = row.c[2] ? (row.c[2].f || String(row.c[2].v)) : "N/A";
 
         if (!isNaN(rodadaNum)) {
           configuracoesRodadas[rodadaNum] = {
@@ -290,11 +292,11 @@ async function carregarConfiguracoes() {
       }
     });
 
-    // Determina qual é a rodada ativa com base na data de HOJE
+    // Determina a rodada ativa com base na data de HOJE
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
-    currentRound = null; // Reset para verificar
+    currentRound = null;
 
     for (let rNum in configuracoesRodadas) {
       const conf = configuracoesRodadas[rNum];
@@ -312,7 +314,6 @@ async function carregarConfiguracoes() {
       }
     }
 
-    // Se encontrou uma rodada ativa para a data atual
     if (currentRound && configuracoesRodadas[currentRound] && configuracoesRodadas[currentRound].meta) {
       targetMeta = configuracoesRodadas[currentRound].meta;
     } else {
@@ -327,7 +328,7 @@ async function carregarConfiguracoes() {
   }
 }
 
-// Leitura de Dados da Planilha (Pontos e Ranking da Rodada Vigente)
+// Leitura de Dados da Planilha
 async function carregarPontuacaoELeaderboard() {
   const rankingList = document.getElementById("rankingList");
   rankingList.innerHTML = `<p class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Atualizando pontuações...</p>`;
@@ -430,7 +431,6 @@ function abrirModalStatus() {
 
   const select = document.getElementById("selectRodada");
   
-  // Pega todas as rodadas cadastradas na aba de configurações + as existentes nos cliques
   let rodadasExistentes = Object.keys(configuracoesRodadas).map(Number);
   
   todosOsCliques.forEach(item => {
@@ -445,7 +445,6 @@ function abrirModalStatus() {
     select.innerHTML = `<option value="">Nenhuma rodada disponível</option>`;
   } else {
     select.innerHTML = rodadasExistentes.map(r => `<option value="${r}">Rodada ${r}</option>`).join('');
-    // Seleciona a rodada atual ou a primeira disponível
     select.value = currentRound ? currentRound : rodadasExistentes[0];
   }
 
@@ -497,7 +496,6 @@ function carregarEstatisticasRodada() {
   const posRodada = rankingRodada.findIndex(item => item.user.toLowerCase() === (currentUser || "").toLowerCase());
   document.getElementById("userRoundRank").innerText = posRodada !== -1 ? `#${posRodada + 1}` : "Sem Posição";
 
-  // Exibe o período configurado na planilha
   if (configuracoesRodadas[rodadaSel]) {
     const inicio = configuracoesRodadas[rodadaSel].inicio;
     const fim = configuracoesRodadas[rodadaSel].fim;
@@ -548,7 +546,7 @@ function iniciarRecompensa() {
   }, 1000);
 }
 
-// Confirmar Ponto e enviar ao Google Forms
+// Confirmar Ponto
 function confirmarPontuacao() {
   if (!currentRound) {
     document.getElementById("adModal").classList.add("hidden");
@@ -590,7 +588,6 @@ function updateCooldown() {
 
   if (!btn) return;
 
-  // SE NÃO HOUVER RODADA ATIVA PELA DATA
   if (!currentRound) {
     btn.disabled = true;
     btn.innerText = "Sem Rodada Ativa";
@@ -598,7 +595,6 @@ function updateCooldown() {
     return;
   }
 
-  // SE A META FOI ALCANÇADA
   if (pointsCount >= targetMeta) {
     btn.disabled = true;
     btn.innerText = "Meta Alcançada!";
@@ -638,7 +634,6 @@ function updateProgressUI() {
   if (roundElem) {
     if (currentRound) {
       roundElem.innerText = currentRound;
-      // Garante que se o texto antes era "Aguardando...", ele volte ao padrão
       const parentLabel = roundElem.parentElement;
       if (parentLabel && parentLabel.innerText.includes("Aguardando")) {
         parentLabel.innerHTML = `Rodada Atual: <span id="roundNumber">${currentRound}</span>`;
