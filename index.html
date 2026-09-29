@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8">
-  <!-- Configuração correta para telas mobile sem zoom e sem quebra de viewport -->
+  <!-- Configuração de viewport para telas mobile sem escala errada -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
   <title>Jogo Cooperativo</title>
 
@@ -73,7 +73,7 @@
     </section>
   </div>
 
-  <!-- Rodapé PIX Fixado -->
+  <!-- Rodapé PIX Fixado no Fundo da Tela -->
   <footer class="donation-footer">
     <div class="donation-card">
       <p class="donation-title">
@@ -109,29 +109,46 @@
 
   <script src="script.js"></script>
   <script>
-    // Bloquear Zoom via Teclado (Ctrl + +, Ctrl + -, Ctrl + 0)
+    // 1. Bloquear Pinch-to-Zoom (zoom com 2 dedos) no mobile
+    document.addEventListener('touchstart', function (event) {
+      if (event.touches.length > 1) {
+        event.preventDefault();
+      }
+    }, { passive: false });
+
+    // 2. Bloquear Double-Tap Zoom (duplo toque rápido)
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function (event) {
+      const now = (new Date()).getTime();
+      if (now - lastTouchEnd <= 300) {
+        event.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, false);
+
+    // 3. Bloquear Gestos nativos do Safari / iOS
+    document.addEventListener('gesturestart', function (e) {
+      e.preventDefault();
+    });
+    document.addEventListener('gesturechange', function (e) {
+      e.preventDefault();
+    });
+    document.addEventListener('gestureend', function (e) {
+      e.preventDefault();
+    });
+
+    // 4. Bloquear Zoom no Desktop (Ctrl + / Ctrl - / Ctrl 0 / Scroll)
     document.addEventListener('keydown', function (e) {
       if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
         e.preventDefault();
       }
     });
 
-    // Bloquear Zoom via Roda do Mouse (Ctrl + Scroll)
     document.addEventListener('wheel', function (e) {
       if (e.ctrlKey) {
         e.preventDefault();
       }
     }, { passive: false });
-
-    // Bloquear Zoom por toque duplo em dispositivos móveis
-    let lastTouchEnd = 0;
-    document.addEventListener('touchend', function (e) {
-      const now = (new Date()).getTime();
-      if (now - lastTouchEnd <= 300) {
-        e.preventDefault();
-      }
-      lastTouchEnd = now;
-    }, false);
   </script>
 </body>
 </html>
