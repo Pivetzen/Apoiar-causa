@@ -20,8 +20,8 @@ const NOME_RECEPTOR = "MATHEUS ARRUDA MAIA";
 const CIDADE_RECEPTOR = "FORTALEZA";
 
 let currentUser = localStorage.getItem("gameUser") || null;
-let currentRound = 1;
-let targetMeta = 21; // Valor inicial até carregar os dados reais
+let currentRound = null; // Começa como null para ser detectado via data
+let targetMeta = 21; 
 let pointsCount = 0;
 let adTimerInterval;
 
@@ -41,6 +41,33 @@ document.addEventListener("DOMContentLoaded", () => {
   setInterval(updateCooldown, 1000);
   iniciarMonitorInatividade();
 });
+
+// --- HELPER DE CONVERSÃO DE DATAS DA PLANILHA ---
+function parseSheetDate(dateStr) {
+  if (!dateStr || dateStr === "N/A") return null;
+  
+  let str = String(dateStr).trim();
+  
+  // Trata formato gviz Date(YYYY,M,D,...)
+  if (str.startsWith("Date(")) {
+    const parts = str.match(/\d+/g);
+    if (parts && parts.length >= 3) {
+      return new Date(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]));
+    }
+  }
+
+  // Trata formato DD/MM/YYYY
+  const partsDDMM = str.split('/');
+  if (partsDDMM.length === 3) {
+    const day = parseInt(partsDDMM[0], 10);
+    const month = parseInt(partsDDMM[1], 10) - 1;
+    const year = parseInt(partsDDMM[2], 10);
+    return new Date(year, month, day);
+  }
+
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 // --- SISTEMA DE LOGOUT E INATIVIDADE ---
 function iniciarMonitorInatividade() {
@@ -93,7 +120,6 @@ function switchTab(tab) {
 // Checagem de Sessão com verificação de Banimento
 async function checkSession() {
   if (currentUser) {
-    // Valida na planilha se o usuário logado foi banido recentemente
     try {
       const sheetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=Respostas%20ao%20formul%C3%A1rio%201&tqx=out:json`;
       const res = await fetch(sheetUrl);
@@ -173,7 +199,6 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     for (let row of rows) {
       const dbUser = row.c && row.c[1] ? String(row.c[1].v).trim() : "";
       const dbPass = row.c && row.c[2] ? String(row.c[2].v).trim() : "";
-      // Leitura da Coluna D (Status: Ativo / Banido)
       const dbStatus = row.c && row.c[3] && row.c[3].v !== null ? String(row.c[3].v).trim().toLowerCase() : "";
 
       if (dbUser.toLowerCase() === userEntered.toLowerCase() && dbPass === passEntered) {
@@ -244,8 +269,8 @@ async function carregarConfiguracoes() {
     rows.forEach(row => {
       if (row.c && row.c[0] && row.c[0].v !== null) {
         const rodadaNum = parseInt(row.c[0].v);
-        const dataInicio = row.c[1] ? (row.c[1].f || String(row.c[1].v)) : "N/A";
-        const dataFim = row.c[2] ? (row.c[2].f || String(row.c[2].v)) : "N/A";
+        const dataInicioTexto = row.c[1] ? (row.c[1].f || String(row.c[1].v)) : "N/A";
+        const dataFimTexto = row.c[2] ? (row.c[2].f || String(row.c[2].v)) : "N/A";
         
         let metaCliques = null;
         if (row.c && row.c[3] && row.c[3].v !== null) {
@@ -255,27 +280,54 @@ async function carregarConfiguracoes() {
 
         if (!isNaN(rodadaNum)) {
           configuracoesRodadas[rodadaNum] = {
-            inicio: dataInicio,
-            fim: dataFim,
+            inicio: dataInicioTexto,
+            fim: dataFimTexto,
+            inicioDt: parseSheetDate(dataInicioTexto),
+            fimDt: parseSheetDate(dataFimTexto),
             meta: metaCliques
           };
         }
       }
     });
 
-    // Atualiza a meta da rodada atual e sincroniza com a interface imediatamente
-    if (configuracoesRodadas[currentRound] && configuracoesRodadas[currentRound].meta) {
-      targetMeta = configuracoesRodadas[currentRound].meta;
-      updateProgressUI();
-      updateCooldown();
+    // Determina qual é a rodada ativa com base na data de HOJE
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    currentRound = null; // Reset para verificar
+
+    for (let rNum in configuracoesRodadas) {
+      const conf = configuracoesRodadas[rNum];
+      if (conf.inicioDt && conf.fimDt) {
+        const dtInicio = new Date(conf.inicioDt);
+        dtInicio.setHours(0, 0, 0, 0);
+
+        const dtFim = new Date(conf.fimDt);
+        dtFim.setHours(23, 59, 59, 999);
+
+        if (hoje >= dtInicio && hoje <= dtFim) {
+          currentRound = parseInt(rNum);
+          break;
+        }
+      }
     }
+
+    // Se encontrou uma rodada ativa para a data atual
+    if (currentRound && configuracoesRodadas[currentRound] && configuracoesRodadas[currentRound].meta) {
+      targetMeta = configuracoesRodadas[currentRound].meta;
+    } else {
+      targetMeta = 0;
+    }
+
+    updateProgressUI();
+    updateCooldown();
 
   } catch (err) {
     console.warn("Não foi possível carregar a aba configuracoes:", err);
   }
 }
 
-// Leitura de Dados da Planilha (Pontos e Ranking da Rodada Vigente - Top 10)
+// Leitura de Dados da Planilha (Pontos e Ranking da Rodada Vigente)
 async function carregarPontuacaoELeaderboard() {
   const rankingList = document.getElementById("rankingList");
   rankingList.innerHTML = `<p class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Atualizando pontuações...</p>`;
@@ -304,7 +356,6 @@ async function carregarPontuacaoELeaderboard() {
         const username = String(userCell).trim();
         const rodadaNum = parseInt(rodadaCell) || 1;
 
-        // Guarda histórico geral
         contagemPorUsuarioGeral[username] = (contagemPorUsuarioGeral[username] || 0) + 1;
 
         todosOsCliques.push({
@@ -312,27 +363,23 @@ async function carregarPontuacaoELeaderboard() {
           rodada: rodadaNum
         });
 
-        // Contabiliza apenas cliques da RODADA VIGENTE
-        if (rodadaNum === currentRound) {
+        if (currentRound && rodadaNum === currentRound) {
           totalCliquesRodadaAtual++;
           contagemPorUsuarioRodada[username] = (contagemPorUsuarioRodada[username] || 0) + 1;
         }
       }
     });
 
-    // Define os pontos atuais com base APENAS na rodada vigente
     pointsCount = totalCliquesRodadaAtual;
     updateProgressUI();
     updateCooldown();
 
-    // Guardar ranking geral para o modal de status
     rankingGeralCalculado = Object.keys(contagemPorUsuarioGeral).map(user => ({
       user: user,
       pontos: contagemPorUsuarioGeral[user]
     }));
     rankingGeralCalculado.sort((a, b) => b.pontos - a.pontos);
 
-    // Calcular ranking exclusivo da rodada vigente
     const rankingRodadaCalculado = Object.keys(contagemPorUsuarioRodada).map(user => ({
       user: user,
       pontos: contagemPorUsuarioRodada[user]
@@ -340,10 +387,11 @@ async function carregarPontuacaoELeaderboard() {
 
     rankingRodadaCalculado.sort((a, b) => b.pontos - a.pontos);
 
-    // Pega estritamente os 10 primeiros colocados
     const top10Rodada = rankingRodadaCalculado.slice(0, 10);
 
-    if (top10Rodada.length === 0) {
+    if (!currentRound) {
+      rankingList.innerHTML = `<p class="empty-text">Aguardando início de uma nova rodada.</p>`;
+    } else if (top10Rodada.length === 0) {
       rankingList.innerHTML = `<p class="empty-text">Nenhum clique registado nesta rodada até ao momento.</p>`;
     } else {
       rankingList.innerHTML = top10Rodada.map((item, index) => {
@@ -377,22 +425,29 @@ function abrirModalStatus() {
   const meusCliquesGeral = todosOsCliques.filter(c => c.user.toLowerCase() === (currentUser || "").toLowerCase());
   document.getElementById("userTotalPoints").innerText = meusCliquesGeral.length;
 
-  // Posição no Ranking Geral
   const posGeral = rankingGeralCalculado.findIndex(item => item.user.toLowerCase() === (currentUser || "").toLowerCase());
   document.getElementById("userGeneralRank").innerText = posGeral !== -1 ? `#${posGeral + 1}` : "Sem Posição";
 
-  // Preencher opções de rodadas
   const select = document.getElementById("selectRodada");
-  let rodadasExistentes = [...new Set(todosOsCliques.map(item => item.rodada))];
   
-  if (!rodadasExistentes.includes(currentRound)) {
-    rodadasExistentes.push(currentRound);
-  }
+  // Pega todas as rodadas cadastradas na aba de configurações + as existentes nos cliques
+  let rodadasExistentes = Object.keys(configuracoesRodadas).map(Number);
+  
+  todosOsCliques.forEach(item => {
+    if (!rodadasExistentes.includes(item.rodada)) {
+      rodadasExistentes.push(item.rodada);
+    }
+  });
 
   rodadasExistentes.sort((a, b) => a - b);
 
-  select.innerHTML = rodadasExistentes.map(r => `<option value="${r}">Rodada ${r}</option>`).join('');
-  select.value = currentRound;
+  if (rodadasExistentes.length === 0) {
+    select.innerHTML = `<option value="">Nenhuma rodada disponível</option>`;
+  } else {
+    select.innerHTML = rodadasExistentes.map(r => `<option value="${r}">Rodada ${r}</option>`).join('');
+    // Seleciona a rodada atual ou a primeira disponível
+    select.value = currentRound ? currentRound : rodadasExistentes[0];
+  }
 
   carregarEstatisticasRodada();
 }
@@ -416,15 +471,21 @@ function alternarAbaStatus(aba) {
 }
 
 function carregarEstatisticasRodada() {
-  const rodadaSel = parseInt(document.getElementById("selectRodada").value);
+  const selectVal = document.getElementById("selectRodada").value;
+  if (!selectVal) {
+    document.getElementById("userRoundPoints").innerText = 0;
+    document.getElementById("userRoundRank").innerText = "Sem Posição";
+    document.getElementById("userRoundDate").innerText = "Datas não configuradas";
+    return;
+  }
+
+  const rodadaSel = parseInt(selectVal);
   
-  // Cliques da rodada
   const cliquesDaRodada = todosOsCliques.filter(item => item.rodada === rodadaSel);
   const meusCliquesNaRodada = cliquesDaRodada.filter(item => item.user.toLowerCase() === (currentUser || "").toLowerCase());
 
   document.getElementById("userRoundPoints").innerText = meusCliquesNaRodada.length;
 
-  // Calcular ranking específico da rodada
   const contagemRodada = {};
   cliquesDaRodada.forEach(item => {
     contagemRodada[item.user] = (contagemRodada[item.user] || 0) + 1;
@@ -436,7 +497,7 @@ function carregarEstatisticasRodada() {
   const posRodada = rankingRodada.findIndex(item => item.user.toLowerCase() === (currentUser || "").toLowerCase());
   document.getElementById("userRoundRank").innerText = posRodada !== -1 ? `#${posRodada + 1}` : "Sem Posição";
 
-  // Data Inicial e Data Final da aba configuracoes
+  // Exibe o período configurado na planilha
   if (configuracoesRodadas[rodadaSel]) {
     const inicio = configuracoesRodadas[rodadaSel].inicio;
     const fim = configuracoesRodadas[rodadaSel].fim;
@@ -448,7 +509,11 @@ function carregarEstatisticasRodada() {
 
 // Recompensa / Simulação do Ad
 function iniciarRecompensa() {
-  // VERIFICAÇÃO RIGOROSA: Bloqueia caso a meta tenha sido atingida
+  if (!currentRound) {
+    alert("Aguardando nova rodada... Nenhuma rodada ativa no momento.");
+    return;
+  }
+
   if (pointsCount >= targetMeta) {
     alert("A meta desta rodada já foi alcançada!");
     return;
@@ -485,7 +550,12 @@ function iniciarRecompensa() {
 
 // Confirmar Ponto e enviar ao Google Forms
 function confirmarPontuacao() {
-  // Trava de segurança no envio final
+  if (!currentRound) {
+    document.getElementById("adModal").classList.add("hidden");
+    alert("Aguardando nova rodada... O ponto não foi registrado.");
+    return;
+  }
+
   if (pointsCount >= targetMeta) {
     document.getElementById("adModal").classList.add("hidden");
     alert("A meta desta rodada já foi atingida! O ponto não foi registrado.");
@@ -520,7 +590,15 @@ function updateCooldown() {
 
   if (!btn) return;
 
-  // SE A META FOI ALCANÇADA: Bloqueia o botão e atualiza o texto
+  // SE NÃO HOUVER RODADA ATIVA PELA DATA
+  if (!currentRound) {
+    btn.disabled = true;
+    btn.innerText = "Sem Rodada Ativa";
+    if (cooldownText) cooldownText.innerText = "Aguardando início de uma nova rodada...";
+    return;
+  }
+
+  // SE A META FOI ALCANÇADA
   if (pointsCount >= targetMeta) {
     btn.disabled = true;
     btn.innerText = "Meta Alcançada!";
@@ -528,7 +606,6 @@ function updateCooldown() {
     return;
   }
 
-  // Restaura o texto original do botão
   btn.innerText = "Pontuar (+1 Clique)";
 
   const lastClick = localStorage.getItem("lastClickTime");
@@ -556,11 +633,28 @@ function updateCooldown() {
 }
 
 function updateProgressUI() {
+  const roundElem = document.getElementById("roundNumber");
+  
+  if (roundElem) {
+    if (currentRound) {
+      roundElem.innerText = currentRound;
+      // Garante que se o texto antes era "Aguardando...", ele volte ao padrão
+      const parentLabel = roundElem.parentElement;
+      if (parentLabel && parentLabel.innerText.includes("Aguardando")) {
+        parentLabel.innerHTML = `Rodada Atual: <span id="roundNumber">${currentRound}</span>`;
+      }
+    } else {
+      const parentLabel = roundElem.parentElement;
+      if (parentLabel) {
+        parentLabel.innerText = "Aguardando nova rodada...";
+      }
+    }
+  }
+
   document.getElementById("currentPoints").innerText = pointsCount;
   document.getElementById("targetPoints").innerText = targetMeta;
-  document.getElementById("roundNumber").innerText = currentRound;
 
-  const percentage = Math.min((pointsCount / targetMeta) * 100, 100);
+  const percentage = targetMeta > 0 ? Math.min((pointsCount / targetMeta) * 100, 100) : 0;
   document.getElementById("progressFill").style.width = `${percentage}%`;
 }
 
