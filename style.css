@@ -12,6 +12,8 @@ html, body {
   width: 100%;
   max-width: 100%;
   overflow-x: hidden; /* Impede rolagem horizontal no mobile */
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
 }
 
 * {
@@ -27,14 +29,14 @@ body {
   color: var(--text);
   min-height: 100vh;
   margin: 0;
-  padding: 20px 15px 160px 15px; /* Espaço para o rodapé fixo */
+  padding: 20px 15px 160px 15px; /* Margem inferior para o rodapé fixo */
 }
 
 .app-container {
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  display: block; /* Garante empilhamento vertical limpo */
+  display: block;
 }
 
 header {
@@ -98,6 +100,7 @@ form h2 {
   margin-bottom: 5px;
 }
 
+/* Tamanho de 16px impede o iOS de aproximar/dar zoom ao clicar num input */
 input {
   width: 100%;
   padding: 12px;
@@ -105,7 +108,7 @@ input {
   border: 1px solid #334155;
   border-radius: 6px;
   color: var(--text);
-  font-size: 1rem;
+  font-size: 16px !important; 
 }
 
 input:focus {
@@ -274,7 +277,7 @@ button:disabled {
 .donation-input {
   flex: 1;
   padding: 8px;
-  font-size: 0.85rem;
+  font-size: 16px !important;
 }
 
 .btn-pix {
