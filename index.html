@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8">
-  <!-- Bloqueio de Zoom e Escala de Ecrã -->
+  <!-- Bloqueio Estreito de Zoom e Escala de Ecrã -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Jogo Cooperativo</title>
 
@@ -71,27 +71,27 @@
         <p class="loading-text">A carregar classificação...</p>
       </div>
     </section>
-
-    <!-- Rodapé PIX Estilo Doação -->
-    <footer class="donation-footer">
-      <div class="donation-card">
-        <p class="donation-title">
-          <i class="fa-solid fa-heart" style="color: #ef4444;"></i> Gostou do app? Apoie o projeto!
-        </p>
-        <p class="donation-subtitle">Sua doação ajuda a manter a ferramenta online.</p>
-        
-        <div class="donation-controls">
-          <input type="text" id="inputValorDoacao" placeholder="Digite um valor..." oninput="mascaraMoeda(this)" class="donation-input">
-          <button onclick="gerarECopiarPixDoacao()" class="btn-pix">
-            <i class="fa-regular fa-copy"></i> Copiar Pix
-          </button>
-        </div>
-        <p id="msgSucessoPix" class="pix-success-msg">
-          <i class="fa-solid fa-check-circle"></i> Código Copia e Cola gravado! Abra seu banco para pagar.
-        </p>
-      </div>
-    </footer>
   </div>
+
+  <!-- Rodapé PIX Fixado -->
+  <footer class="donation-footer">
+    <div class="donation-card">
+      <p class="donation-title">
+        <i class="fa-solid fa-heart" style="color: #ef4444;"></i> Gostou do app? Apoie o projeto!
+      </p>
+      <p class="donation-subtitle">Sua doação ajuda a manter a ferramenta online.</p>
+      
+      <div class="donation-controls">
+        <input type="text" id="inputValorDoacao" placeholder="Digite um valor..." oninput="mascaraMoeda(this)" class="donation-input">
+        <button onclick="gerarECopiarPixDoacao()" class="btn-pix">
+          <i class="fa-regular fa-copy"></i> Copiar Pix
+        </button>
+      </div>
+      <p id="msgSucessoPix" class="pix-success-msg">
+        <i class="fa-solid fa-check-circle"></i> Código Copia e Cola gravado! Abra seu banco para pagar.
+      </p>
+    </div>
+  </footer>
 
   <!-- Modal do Anúncio de Recompensa -->
   <div id="adModal" class="modal hidden">
@@ -103,10 +103,35 @@
     </div>
   </div>
 
-  <!-- iFrames ocultos para envio sem redirecionar -->
+  <!-- iFrames ocultos -->
   <iframe name="hidden_iframe_reg" id="hidden_iframe_reg" style="display:none;"></iframe>
   <iframe name="hidden_iframe_clk" id="hidden_iframe_clk" style="display:none;"></iframe>
 
   <script src="script.js"></script>
+  <script>
+    // Bloquear Zoom via Teclado (Ctrl + +, Ctrl + -, Ctrl + 0)
+    document.addEventListener('keydown', function (e) {
+      if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
+        e.preventDefault();
+      }
+    });
+
+    // Bloquear Zoom via Roda do Mouse (Ctrl + Scroll)
+    document.addEventListener('wheel', function (e) {
+      if (e.ctrlKey) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    // Bloquear Zoom por toque duplo em dispositivos móveis
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function (e) {
+      const now = (new Date()).getTime();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, false);
+  </script>
 </body>
 </html>
