@@ -21,7 +21,7 @@ const CIDADE_RECEPTOR = "FORTALEZA";
 
 let currentUser = localStorage.getItem("gameUser") || null;
 let currentRound = 1;
-let targetMeta = 1000;
+let targetMeta = 21; // Ajuste a meta da rodada aqui
 let pointsCount = 0;
 let adTimerInterval;
 
@@ -236,7 +236,7 @@ async function carregarPontuacaoELeaderboard() {
     const data = JSON.parse(jsonString);
 
     const rows = data.table.rows || [];
-    let totalCliquesGlobal = 0;
+    let totalCliquesRodadaAtual = 0;
     const contagemPorUsuarioGeral = {};
     const contagemPorUsuarioRodada = {};
     todosOsCliques = [];
@@ -248,9 +248,8 @@ async function carregarPontuacaoELeaderboard() {
       if (userCell) {
         const username = String(userCell).trim();
         const rodadaNum = parseInt(rodadaCell) || 1;
-        totalCliquesGlobal++;
 
-        // Guarda o histórico geral
+        // Guarda histórico geral
         contagemPorUsuarioGeral[username] = (contagemPorUsuarioGeral[username] || 0) + 1;
 
         todosOsCliques.push({
@@ -258,16 +257,18 @@ async function carregarPontuacaoELeaderboard() {
           rodada: rodadaNum
         });
 
-        // Contabiliza apenas os cliques da RODADA VIGENTE
+        // Contabiliza apenas cliques da RODADA VIGENTE
         if (rodadaNum === currentRound) {
+          totalCliquesRodadaAtual++;
           contagemPorUsuarioRodada[username] = (contagemPorUsuarioRodada[username] || 0) + 1;
         }
       }
     });
 
-    pointsCount = totalCliquesGlobal;
+    // Define os pontos atuais com base APENAS na rodada vigente
+    pointsCount = totalCliquesRodadaAtual;
     updateProgressUI();
-    updateCooldown(); // Reavalia a disponibilidade do botão ao atualizar os pontos
+    updateCooldown();
 
     // Guardar ranking geral para o modal de status
     rankingGeralCalculado = Object.keys(contagemPorUsuarioGeral).map(user => ({
@@ -276,7 +277,7 @@ async function carregarPontuacaoELeaderboard() {
     }));
     rankingGeralCalculado.sort((a, b) => b.pontos - a.pontos);
 
-    // Calcular o ranking exclusivo da rodada vigente
+    // Calcular ranking exclusivo da rodada vigente
     const rankingRodadaCalculado = Object.keys(contagemPorUsuarioRodada).map(user => ({
       user: user,
       pontos: contagemPorUsuarioRodada[user]
@@ -392,7 +393,7 @@ function carregarEstatisticasRodada() {
 
 // Recompensa / Simulação do Ad
 function iniciarRecompensa() {
-  // Impede o clique caso a meta coletiva já tenha sido batida
+  // VERIFICAÇÃO RIGOROSA: Bloqueia caso a meta tenha sido atingida
   if (pointsCount >= targetMeta) {
     alert("A meta desta rodada já foi alcançada!");
     return;
@@ -429,6 +430,13 @@ function iniciarRecompensa() {
 
 // Confirmar Ponto e enviar ao Google Forms
 function confirmarPontuacao() {
+  // Dupla trava de segurança: cancela o envio se a meta já tiver sido atingida
+  if (pointsCount >= targetMeta) {
+    document.getElementById("adModal").classList.add("hidden");
+    alert("A meta desta rodada já foi atingida! O ponto não foi registrado.");
+    return;
+  }
+
   document.getElementById("adModal").classList.add("hidden");
 
   const form = document.createElement("form");
@@ -455,22 +463,24 @@ function updateCooldown() {
   const btn = document.getElementById("clickBtn");
   const cooldownText = document.getElementById("cooldownText");
 
+  if (!btn) return;
+
   // SE A META FOI ALCANÇADA: Bloqueia o botão e atualiza o texto
   if (pointsCount >= targetMeta) {
     btn.disabled = true;
     btn.innerText = "Meta Alcançada!";
-    cooldownText.innerText = "A meta coletiva desta rodada já foi batida!";
+    if (cooldownText) cooldownText.innerText = "A meta coletiva desta rodada já foi batida!";
     return;
   }
 
-  // Restaura o texto original do botão caso a meta ainda não tenha sido batida
+  // Restaura o texto original do botão
   btn.innerText = "Pontuar (+1 Clique)";
 
   const lastClick = localStorage.getItem("lastClickTime");
 
   if (!lastClick) {
     btn.disabled = false;
-    cooldownText.innerText = "";
+    if (cooldownText) cooldownText.innerText = "";
     return;
   }
 
@@ -483,10 +493,10 @@ function updateCooldown() {
     const remainingSeconds = Math.ceil((fiveMinutes - diff) / 1000);
     const min = Math.floor(remainingSeconds / 60);
     const sec = remainingSeconds % 60;
-    cooldownText.innerText = `Próximo clique em: ${min}m ${sec < 10 ? '0' : ''}${sec}s`;
+    if (cooldownText) cooldownText.innerText = `Próximo clique em: ${min}m ${sec < 10 ? '0' : ''}${sec}s`;
   } else {
     btn.disabled = false;
-    cooldownText.innerText = "";
+    if (cooldownText) cooldownText.innerText = "";
   }
 }
 
