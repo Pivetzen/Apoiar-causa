@@ -21,13 +21,13 @@ const CIDADE_RECEPTOR = "FORTALEZA";
 
 let currentUser = localStorage.getItem("gameUser") || null;
 let currentRound = 1;
-let targetMeta = 21; // Valor inicial padrão até carregar a planilha
+let targetMeta = 21; // Valor inicial até carregar os dados reais
 let pointsCount = 0;
 let adTimerInterval;
 
 // Armazenamento global dos dados para cálculo de ranking e datas
 let todosOsCliques = [];
-let configuracoesRodadas = {}; // ex: { 1: { inicio: '01/09', fim: '10/09', meta: 21 } }
+let configuracoesRodadas = {};
 let rankingGeralCalculado = [];
 
 // TEMPO DE INATIVIDADE (10 Minutos)
@@ -206,8 +206,12 @@ async function carregarConfiguracoes() {
         const rodadaNum = parseInt(row.c[0].v);
         const dataInicio = row.c[1] ? (row.c[1].f || String(row.c[1].v)) : "N/A";
         const dataFim = row.c[2] ? (row.c[2].f || String(row.c[2].v)) : "N/A";
-        // Captura o valor da coluna Meta_Cliques (Coluna D / índice 3)
-        const metaCliques = row.c[3] ? parseInt(row.c[3].v) : null;
+        
+        let metaCliques = null;
+        if (row.c && row.c[3] && row.c[3].v !== null) {
+          const valLimpo = String(row.c[3].v).replace(/\D/g, "");
+          metaCliques = parseInt(valLimpo, 10);
+        }
 
         if (!isNaN(rodadaNum)) {
           configuracoesRodadas[rodadaNum] = {
@@ -219,9 +223,11 @@ async function carregarConfiguracoes() {
       }
     });
 
-    // Atualiza a meta da rodada atual dinamicamente caso exista na planilha
+    // Atualiza a meta da rodada atual e sincroniza com a interface imediatamente
     if (configuracoesRodadas[currentRound] && configuracoesRodadas[currentRound].meta) {
       targetMeta = configuracoesRodadas[currentRound].meta;
+      updateProgressUI();
+      updateCooldown();
     }
 
   } catch (err) {
