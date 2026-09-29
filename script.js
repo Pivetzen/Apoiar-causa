@@ -25,12 +25,54 @@ let targetMeta = 1000;
 let pointsCount = 0;
 let adTimerInterval;
 
+// Estrutura para estatísticas do utilizador
+let userCliquesHistorico = []; 
+
+// TEMPO DE INATIVIDADE (10 Minutos)
+const TEMPO_INATIVIDADE_MS = 10 * 60 * 1000;
+let inatividadeTimer;
+
 // Inicialização
 document.addEventListener("DOMContentLoaded", () => {
   checkSession();
   updateCooldown();
   setInterval(updateCooldown, 1000);
+  iniciarMonitorInatividade();
 });
+
+// --- SISTEMA DE LOGOUT E INATIVIDADE ---
+function iniciarMonitorInatividade() {
+  const eventos = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
+  eventos.forEach(evt => {
+    document.addEventListener(evt, resetarTimerInatividade, { passive: true });
+  });
+  resetarTimerInatividade();
+}
+
+function resetarTimerInatividade() {
+  clearTimeout(inatividadeTimer);
+  if (currentUser) {
+    inatividadeTimer = setTimeout(() => {
+      alert("A sua sessão expirou devido a 10 minutos de inatividade.");
+      fazerLogout();
+    }, TEMPO_INATIVIDADE_MS);
+  }
+}
+
+function fazerLogout() {
+  localStorage.removeItem("gameUser");
+  currentUser = null;
+  clearTimeout(inatividadeTimer);
+
+  document.getElementById("authSection").classList.remove("hidden");
+  document.getElementById("gameSection").classList.add("hidden");
+  document.getElementById("rankingSection").classList.add("hidden");
+  document.getElementById("userInfo").innerHTML = "";
+
+  document.getElementById("loginUser").value = "";
+  document.getElementById("loginPass").value = "";
+  switchTab('login');
+}
 
 function switchTab(tab) {
   if (tab === 'login') {
@@ -51,9 +93,20 @@ function checkSession() {
     document.getElementById("authSection").classList.add("hidden");
     document.getElementById("gameSection").classList.remove("hidden");
     document.getElementById("rankingSection").classList.remove("hidden");
-    document.getElementById("userInfo").innerText = `Olá, ${currentUser}`;
     
-    // Procura pontos reais e ranking na planilha
+    // Header com Botão Ver Status e Botão Sair
+    document.getElementById("userInfo").innerHTML = `
+      <span>Olá, <strong>${currentUser}</strong></span>
+      <div class="user-header-actions">
+        <button class="btn-status" onclick="abrirModalStatus()">
+          <i class="fa-solid fa-chart-pie"></i> Ver Status
+        </button>
+        <button class="btn-logout" onclick="fazerLogout()" title="Sair da Conta">
+          <i class="fa-solid fa-right-from-bracket"></i> Sair
+        </button>
+      </div>
+    `;
+    
     carregarPontuacaoELeaderboard();
   }
 }
@@ -75,7 +128,6 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
   submitBtn.innerText = "A verificar...";
 
   try {
-    // Consulta a aba 'Respostas ao formulário 1' (Cadastros)
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=Respostas%20ao%20formul%C3%A1rio%201&tqx=out:json`;
     const res = await fetch(sheetUrl);
     const text = await res.text();
@@ -85,7 +137,6 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     const rows = data.table.rows || [];
     let authenticated = false;
 
-    // Coluna 1 = Usuario (B), Coluna 2 = Senha (C)
     for (let row of rows) {
       const dbUser = row.c && row.c[1] ? String(row.c[1].v).trim() : "";
       const dbPass = row.c && row.c[2] ? String(row.c[2].v).trim() : "";
@@ -101,12 +152,12 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
       currentUser = userEntered;
       checkSession();
     } else {
-      alert("Utilizador ou palavra-passe incorretos! Verifique os dados ou registe uma nova conta.");
+      alert("Utilizador ou palavra-passe incorretos!");
     }
 
   } catch (err) {
     console.error("Erro na autenticação:", err);
-    alert("Erro ao conectar à base de dados. Tente novamente em instantes.");
+    alert("Erro ao conectar à base de dados.");
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerText = "Entrar";
@@ -137,12 +188,11 @@ document.getElementById("registerForm").addEventListener("submit", (e) => {
   alert("Perfil criado com sucesso!");
 });
 
-// Leitura de Dados da Planilha (Pontos e Ranking)
+// Leitura de Dados da Planilha (Pontos, Ranking e Histórico do Usuário)
 async function carregarPontuacaoELeaderboard() {
   const rankingList = document.getElementById("rankingList");
   rankingList.innerHTML = `<p class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Atualizando pontuações...</p>`;
 
-  // Consulta a aba 'Respostas ao formulário 2' (Pontos/Cliques)
   const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=Respostas%20ao%20formul%C3%A1rio%202&tqx=out:json`;
 
   try {
@@ -154,13 +204,24 @@ async function carregarPontuacaoELeaderboard() {
     const rows = data.table.rows || [];
     let totalCliquesGlobal = 0;
     const contagemPorUsuario = {};
+    userCliquesHistorico = [];
 
     rows.forEach(row => {
+      const dataHora = row.c && row.c[0] ? row.c[0].f || row.c[0].v : "";
       const userCell = row.c && row.c[1] ? row.c[1].v : null;
+      const rodadaCell = row.c && row.c[2] ? row.c[2].v : 1;
+
       if (userCell) {
         const username = String(userCell).trim();
         totalCliquesGlobal++;
         contagemPorUsuario[username] = (contagemPorUsuario[username] || 0) + 1;
+
+        if (currentUser && username.toLowerCase() === currentUser.toLowerCase()) {
+          userCliquesHistorico.push({
+            dataHora: dataHora,
+            rodada: parseInt(rodadaCell) || 1
+          });
+        }
       }
     });
 
@@ -197,6 +258,61 @@ async function carregarPontuacaoELeaderboard() {
   } catch (error) {
     console.error("Erro ao carregar dados:", error);
     rankingList.innerHTML = `<p class="empty-text">Não foi possível carregar o ranking no momento.</p>`;
+  }
+}
+
+// --- POPUP / MODAL DE STATUS DO UTILIZADOR ---
+function abrirModalStatus() {
+  document.getElementById("statusModal").classList.remove("hidden");
+  
+  // Atualiza pontos totais do utilizador
+  document.getElementById("userTotalPoints").innerText = userCliquesHistorico.length;
+
+  // Atualiza opções do select de rodadas
+  const select = document.getElementById("selectRodada");
+  const rodadasDisponiveis = [...new Set(userCliquesHistorico.map(item => item.rodada))];
+  
+  if (!rodadasDisponiveis.includes(currentRound)) {
+    rodadasDisponiveis.push(currentRound);
+  }
+  
+  rodadasDisponiveis.sort((a, b) => a - b);
+
+  select.innerHTML = rodadasDisponiveis.map(r => `<option value="${r}">Rodada ${r}</option>`).join('');
+  select.value = currentRound;
+
+  carregarEstatisticasRodada();
+}
+
+function fecharModalStatus() {
+  document.getElementById("statusModal").classList.add("hidden");
+}
+
+function alternarAbaStatus(aba) {
+  if (aba === 'geral') {
+    document.getElementById("statusGeralView").classList.remove("hidden");
+    document.getElementById("statusRodadaView").classList.add("hidden");
+    document.getElementById("tabGeralBtn").classList.add("active");
+    document.getElementById("tabRodadaBtn").classList.remove("active");
+  } else {
+    document.getElementById("statusGeralView").classList.add("hidden");
+    document.getElementById("statusRodadaView").classList.remove("hidden");
+    document.getElementById("tabGeralBtn").classList.remove("active");
+    document.getElementById("tabRodadaBtn").classList.add("active");
+  }
+}
+
+function carregarEstatisticasRodada() {
+  const rodadaSel = parseInt(document.getElementById("selectRodada").value);
+  const pontosNaRodada = userCliquesHistorico.filter(item => item.rodada === rodadaSel);
+
+  document.getElementById("userRoundPoints").innerText = pontosNaRodada.length;
+
+  if (pontosNaRodada.length > 0) {
+    const ultimaData = pontosNaRodada[pontosNaRodada.length - 1].dataHora;
+    document.getElementById("userRoundDate").innerText = ultimaData || "Data não registada";
+  } else {
+    document.getElementById("userRoundDate").innerText = "Sem registos nesta rodada";
   }
 }
 
@@ -377,6 +493,6 @@ function gerarECopiarPixDoacao() {
       }, 5000);
     }
   }).catch(err => {
-    alert('Não foi possível copiar automaticamente. Tente novamente.');
+    alert('Não foi possível copiar automaticamente.');
   });
 }
