@@ -12,7 +12,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  touch-action: manipulation; /* Impede gesto de duplo toque para zoom */
+  touch-action: manipulation;
 }
 
 body {
@@ -20,15 +20,14 @@ body {
   background-color: var(--bg-color);
   color: var(--text);
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px 10px 140px 10px; /* Margem inferior para dar espaço ao rodapé fixo */
+  margin: 0;
+  padding: 20px 10px 150px 10px; /* Espaço na parte inferior para o rodapé fixo não cobrir o conteúdo */
 }
 
 .app-container {
   width: 100%;
   max-width: 480px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 15px;
@@ -223,15 +222,16 @@ button:disabled {
   font-size: 0.9rem;
 }
 
-/* RODAPÉ PIX FIXO NA TELA */
+/* RODAPÉ PIX FIXO NA PARTE INFERIOR */
 .donation-footer {
   position: fixed;
   bottom: 0;
   left: 0;
-  width: 100%;
+  right: 0;
+  width: 100vw;
   background-color: #0b1120;
   border-top: 1px solid #1e293b;
-  padding: 12px 15px;
+  padding: 12px;
   display: flex;
   justify-content: center;
   z-index: 999;
